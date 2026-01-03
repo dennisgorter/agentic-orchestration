@@ -15,8 +15,8 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  height: 90vh;
-  max-height: 900px;
+  height: 95vh;
+  max-height: 1200px;
 }
 
 .header {
@@ -74,10 +74,11 @@
 }
 
 .welcome-section {
-  flex: 1;
+  flex: 0 1 auto;
   overflow-y: auto;
-  padding: 30px;
+  padding: 20px 30px;
   background: #f8f9fa;
+  max-height: 65%;
 }
 
 .workflow-diagram-wrapper {
@@ -110,6 +111,8 @@
   padding: 20px;
   background: #f8f9fa;
   border-radius: 8px;
+  max-height: 300px;
+  overflow-y: auto;
 }
 
 .available-cars h3 {
@@ -185,14 +188,16 @@
 }
 
 .chat-container {
-  flex: 1;
+  flex: 1 1 auto;
+  min-height: 150px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
 
 .messages {
-  flex: 1;
+  flex: 0 1 auto;
+  min-height: 0;
   overflow-y: auto;
   padding: 20px;
   background: #f8f9fa;

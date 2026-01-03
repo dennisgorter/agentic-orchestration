@@ -68,6 +68,9 @@ async def chat(request: ChatRequest):
     state = session_store.create_or_get(request.session_id, request.message)
     state.trace_id = trace_id or ""
     
+    logger.info(f"[{request.session_id}] BEFORE GRAPH - car_identifier: {state.car_identifier}, "
+               f"selected_car: {state.selected_car.plate if state.selected_car else None}")
+    
     # Convert to dict for LangGraph
     state_dict = state.model_dump()
     
@@ -78,6 +81,9 @@ async def chat(request: ChatRequest):
         
         # Convert back to AgentState
         result_state = AgentState(**result)
+        
+        logger.info(f"[{request.session_id}] AFTER GRAPH - car_identifier: {result_state.car_identifier}, "
+                   f"selected_car: {result_state.selected_car.plate if result_state.selected_car else None}")
         
         # Update session store
         session_store.set(request.session_id, result_state)
@@ -120,6 +126,9 @@ async def chat_answer(request: ChatAnswerRequest):
     if not state:
         logger.warning(f"Session not found: {request.session_id}")
         raise HTTPException(status_code=404, detail="Session not found")
+    
+    logger.info(f"[{request.session_id}] DISAMBIGUATION ANSWER - car_identifier: {state.car_identifier}, "
+               f"selected_car: {state.selected_car.plate if state.selected_car else None}")
     
     if not state.pending_question:
         logger.warning(f"No pending question for session: {request.session_id}")

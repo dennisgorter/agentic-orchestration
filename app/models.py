@@ -78,6 +78,7 @@ class AgentState(BaseModel):
     session_id: str
     message: str = ""
     trace_id: str = ""  # For request tracing
+    language: str = "en"  # Detected language code (e.g., "en", "es", "fr", "nl", "de")
     
     # Extracted slots
     intent: Optional[str] = None

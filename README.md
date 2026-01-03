@@ -20,14 +20,29 @@ cd frontend && npx vite
 
 ## Features
 
-- **🖥️ React Chat Interface**: Modern, user-friendly chat UI with example queries
+- **🖥️ React Chat Interface**: Modern, user-friendly chat UI with example queries and available cars display
+- **🌍 Automatic Language Detection**: Detects user's language and responds accordingly (English, Spanish, French, Dutch, German, Italian, Portuguese)
+- **🔄 Car Context Preservation**: Maintains car context across conversation turns for follow-up questions
 - **Multi-intent handling**: Single car queries, fleet queries, and policy-only questions
 - **Smart disambiguation**: Automatically asks clarifying questions when multiple cars or zones match
 - **Deterministic eligibility**: Rule-based decision engine (not LLM-based)
 - **LangGraph workflow**: State machine controls orchestration flow
 - **OpenAI integration**: Intent extraction, question phrasing, and explanation generation
 - **Mock services**: In-memory car and policy data for PoC
-- **Request Traceability**: Unique trace IDs for every request with structured logging (see [TRACEABILITY.md](TRACEABILITY.md))
+- **Request Traceability**: Unique trace IDs for every request with structured logging
+
+## Documentation
+
+- **[QUICKSTART.md](QUICKSTART.md)** - Get started in 5 minutes with step-by-step setup
+- **[IMPLEMENTATION.md](IMPLEMENTATION.md)** - Comprehensive technical documentation including:
+  - Complete feature list and implementation details
+  - Bug fixes (VIN context preservation, graph recursion)
+  - Frontend architecture (React + Vite)
+  - Language detection system (7 languages)
+  - Traceability system (structured logging + trace IDs)
+  - Architecture patterns and design decisions
+  - Extension points for production deployment
+- **[TRACEABILITY.md](TRACEABILITY.md)** - Guide to request tracing and debugging
 
 ## User Interface
 

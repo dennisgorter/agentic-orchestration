@@ -40,7 +40,7 @@ function App() {
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [sessionId] = useState(() => `user_${Date.now()}`);
+  const [sessionId, setSessionId] = useState(() => `user_${Date.now()}`);
   const [showExamples, setShowExamples] = useState(true);
   const [showWorkflow, setShowWorkflow] = useState(false);
   const messagesEndRef = useRef(null);
@@ -135,18 +135,34 @@ function App() {
     sendMessage(query);
   };
 
+  const handleNewChat = () => {
+    setMessages([]);
+    setSessionId(`user_${Date.now()}`);
+    setInputValue('');
+    setShowExamples(true);
+  };
+
   return (
     <div className="app">
       <div className="container">
         <header className="header">
           <h1>🚗 Agent Orchestrator</h1>
           <p className="subtitle">Car Pollution Zone Eligibility - POC</p>
-          <button 
-            className="workflow-toggle"
-            onClick={() => setShowWorkflow(!showWorkflow)}
-          >
-            {showWorkflow ? '💬 Hide Workflow' : '🔄 Show Workflow'}
-          </button>
+          <div className="header-buttons">
+            <button 
+              className="workflow-toggle"
+              onClick={() => setShowWorkflow(!showWorkflow)}
+            >
+              {showWorkflow ? '💬 Hide Workflow' : '🔄 Show Workflow'}
+            </button>
+            <button 
+              className="new-chat-button"
+              onClick={handleNewChat}
+              title="Start a new conversation"
+            >
+              ✨ New Chat
+            </button>
+          </div>
         </header>
 
         {showWorkflow && (

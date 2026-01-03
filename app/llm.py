@@ -96,6 +96,67 @@ class LLMClient:
         response_text = self._call_llm(messages, model)
         return self._parse_with_repair(response_text, model_class, messages, model)
     
+    def call_detect_language(self, user_message: str) -> str:
+        """
+        Detect the language of the user message.
+        
+        Returns ISO 639-1 language code (e.g., 'en', 'es', 'fr', 'nl', 'de').
+        """
+        prompt = f"""Detect the language of the following user message and return ONLY the ISO 639-1 two-letter language code.
+
+Common codes:
+- en: English
+- es: Spanish
+- fr: French
+- nl: Dutch
+- de: German
+- it: Italian
+- pt: Portuguese
+
+User message: "{user_message}"
+
+Respond with ONLY the two-letter language code, nothing else."""
+        
+        messages = [
+            {"role": "system", "content": "You are a language detection assistant. Respond only with the ISO 639-1 language code."},
+            {"role": "user", "content": prompt}
+        ]
+        
+        response = self._call_llm(messages, self.default_model, temperature=0.3)
+        # Extract just the language code (in case LLM adds extra text)
+        lang_code = response.strip().lower()[:2]
+        # Default to English if detection fails
+        if not lang_code.isalpha() or len(lang_code) != 2:
+            return "en"
+        return lang_code
+    
+    def call_translate_message(self, message: str, language: str) -> str:
+        """
+        Translate a simple message to the target language.
+        
+        Args:
+            message: The message to translate
+            language: ISO 639-1 language code for target language
+        
+        Returns:
+            Translated message
+        """
+        if language == "en":
+            return message
+        
+        prompt = f"""Translate the following message to the language with ISO 639-1 code: {language}
+
+Message: "{message}"
+
+Respond with ONLY the translated message, nothing else."""
+        
+        messages = [
+            {"role": "system", "content": "You are a translation assistant. Translate concisely and accurately."},
+            {"role": "user", "content": prompt}
+        ]
+        
+        return self._call_llm(messages, self.default_model, temperature=0.3)
+    
     def call_extract_intent_slots(self, user_message: str) -> IntentRequest:
         """
         Extract intent and slots from user message.
@@ -134,7 +195,8 @@ Respond with ONLY valid JSON matching this schema:
     def call_make_disambiguation_question(
         self, 
         kind: str,  # "car" or "zone"
-        options: list[dict]
+        options: list[dict],
+        language: str = "en"
     ) -> str:
         """
         Generate a natural disambiguation question.
@@ -142,6 +204,7 @@ Respond with ONLY valid JSON matching this schema:
         Args:
             kind: "car" or "zone"
             options: list of dicts with keys like "label", "plate", "zone_name", etc.
+            language: ISO 639-1 language code for response language
         
         Returns:
             A short, clear question asking user to choose.
@@ -153,6 +216,7 @@ Respond with ONLY valid JSON matching this schema:
 Available cars:
 {cars_list}
 
+Respond in the language with ISO 639-1 code: {language}
 Generate ONLY the question text, no extra formatting."""
         else:  # zone
             zones_list = "\n".join([f"{i+1}. {opt['label']}" for i, opt in enumerate(options)])
@@ -161,6 +225,7 @@ Generate ONLY the question text, no extra formatting."""
 Matching zones:
 {zones_list}
 
+Respond in the language with ISO 639-1 code: {language}
 Generate ONLY the question text, no extra formatting."""
         
         messages = [
@@ -178,7 +243,8 @@ Generate ONLY the question text, no extra formatting."""
         car: Optional[Car] = None,
         cars: Optional[list[Car]] = None,
         policy: Optional[ZonePolicy] = None,
-        zone: Optional[ZoneCandidate] = None
+        zone: Optional[ZoneCandidate] = None,
+        language: str = "en"
     ) -> str:
         """
         Generate final explanation grounded in decision and facts.
@@ -191,6 +257,7 @@ Generate ONLY the question text, no extra formatting."""
             cars: List of cars for fleet
             policy: Zone policy
             zone: Zone candidate
+            language: ISO 639-1 language code for response language
         
         Returns:
             Clear, user-friendly explanation.
@@ -208,7 +275,9 @@ Rules:
 
 Exemptions: {', '.join(policy.exemptions) if policy and policy.exemptions else 'None'}
 
-Provide a 2-3 sentence summary suitable for a chatbot response."""
+IMPORTANT: Respond in the language with ISO 639-1 code: {language}
+Provide a 2-3 sentence summary suitable for a chatbot response.
+Then append a helpful note: mention that they can get a specific eligibility check for their vehicle by providing their car's plate number or VIN."""
         
         elif intent == "single_car":
             prompt = f"""Explain the eligibility decision to the user clearly and concisely.
@@ -221,6 +290,7 @@ Factors: {', '.join(decision.factors) if decision and decision.factors else 'Non
 Missing fields: {', '.join(decision.missing_fields) if decision and decision.missing_fields else 'None'}
 Next actions: {', '.join(decision.next_actions) if decision and decision.next_actions else 'None'}
 
+IMPORTANT: Respond in the language with ISO 639-1 code: {language}
 Provide a clear 2-4 sentence explanation suitable for a chatbot response. If there are missing fields or next actions, mention them."""
         
         else:  # fleet
@@ -236,6 +306,7 @@ Allowed: {len(allowed_cars)} ({', '.join([fd.plate for fd in allowed_cars]) if a
 Not allowed: {len(banned_cars)} ({', '.join([fd.plate for fd in banned_cars]) if banned_cars else 'none'})
 Unknown: {len(unknown_cars)} ({', '.join([fd.plate for fd in unknown_cars]) if unknown_cars else 'none'})
 
+IMPORTANT: Respond in the language with ISO 639-1 code: {language}
 Provide a clear summary suitable for a chatbot response. List cars by category (allowed, not allowed, unknown) and mention why if relevant."""
         
         messages = [

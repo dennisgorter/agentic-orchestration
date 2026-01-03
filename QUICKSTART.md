@@ -77,6 +77,17 @@ npx vite
 - "What are the pollution rules in Amsterdam?"
 - "What are the pollution rules in Rotterdam?"
 
+**Multilingual Support** (7 languages supported):
+- English: "Is my car allowed in Amsterdam?"
+- Spanish: "¿Puedo conducir mi coche en Amsterdam?"
+- French: "Puis-je conduire ma voiture à Amsterdam?"
+- Dutch: "Kan ik met mijn auto in Amsterdam rijden?"
+- German: "Darf ich mit meinem Auto in Amsterdam fahren?"
+- Italian: "Posso guidare la mia auto ad Amsterdam?"
+- Portuguese: "Posso dirigir meu carro em Amsterdã?"
+
+The system automatically detects your language and responds accordingly!
+
 ### Available Test Cars
 
 | Plate Number | Type | Status |
@@ -114,6 +125,9 @@ When the system needs clarification, you'll see:
 2. **Session Tracking** - Your conversation is tracked by session ID
 3. **Smart Disambiguation** - System asks clarifying questions when needed
 4. **Clean UI** - Modern, responsive chat interface
+5. **Car Context Preservation** - Ask follow-up questions without repeating the car plate
+   - Example: "Is EF-456-GH allowed in Amsterdam?" → "And for Rotterdam?" (car preserved)
+6. **Multilingual** - System detects your language and responds in the same language
 
 ## Troubleshooting
 

@@ -17,23 +17,59 @@ def extract_intent_node(state: AgentState) -> AgentState:
     logger.info(f"[{state.session_id}] extract_intent_node - message: {state.message[:50]}...")
     
     llm = get_llm_client()
+    
+    # Detect language only for substantial messages or if not already set
+    # Short messages (like just a VIN) should keep the previous language
+    if not state.language or state.language == "en" and len(state.message.split()) > 3:
+        state.language = llm.call_detect_language(state.message)
+        logger.info(f"[{state.session_id}] Language detected: {state.language}")
+    else:
+        logger.info(f"[{state.session_id}] Using previous language: {state.language}")
+    
     intent_data = llm.call_extract_intent_slots(state.message)
     
-    state.intent = intent_data.intent
-    state.car_identifier = intent_data.car_identifier
+    # Preserve previous car context if new message doesn't specify a car
+    previous_car_identifier = state.car_identifier
+    previous_selected_car = state.selected_car
+    previous_intent = state.intent
+    
+    # Determine intent - if we have car context, keep it as single_car intent
+    if intent_data.car_identifier:
+        # New car mentioned - use new intent
+        state.intent = intent_data.intent
+        state.car_identifier = intent_data.car_identifier
+        logger.info(f"[{state.session_id}] New car identifier from message: {state.car_identifier}, intent: {state.intent}")
+    elif previous_car_identifier or previous_selected_car:
+        # No car in message but we have previous car context - preserve single_car intent
+        state.intent = "single_car"
+        state.car_identifier = previous_car_identifier
+        state.selected_car = previous_selected_car
+        logger.info(f"[{state.session_id}] No car in new message, preserving previous: {previous_car_identifier}, forcing intent to single_car")
+    else:
+        # No car context at all - use extracted intent
+        state.intent = intent_data.intent
+        state.car_identifier = None
+        logger.info(f"[{state.session_id}] No car context, intent: {state.intent}")
+    
     state.city = intent_data.city
     state.zone_phrase = intent_data.zone_phrase
     
-    logger.info(f"[{state.session_id}] Intent extracted: {state.intent}, city: {state.city}, car: {state.car_identifier}")
+    logger.info(f"[{state.session_id}] Final state: intent={state.intent}, city={state.city}, "
+               f"car={state.car_identifier}, zone={state.zone_phrase}")
     
     return state
 
 
 def resolve_zone_node(state: AgentState) -> AgentState:
     """Resolve city and zone phrase to specific zone(s)."""
+    llm = get_llm_client()
+    
     if not state.city:
         # No city specified - set error reply
-        state.reply = "I need to know which city you're asking about. Could you specify the city?"
+        state.reply = llm.call_translate_message(
+            "I need to know which city you're asking about. Could you specify the city?",
+            state.language
+        )
         state.pending_question = False
         state.next_step = "end"
         return state
@@ -41,7 +77,10 @@ def resolve_zone_node(state: AgentState) -> AgentState:
     candidates = resolve_zone(state.city, state.zone_phrase)
     
     if not candidates:
-        state.reply = f"I couldn't find any pollution zones in {state.city}. Please check the city name."
+        state.reply = llm.call_translate_message(
+            f"I couldn't find any pollution zones in {state.city}. Please check the city name.",
+            state.language
+        )
         state.pending_question = False
         state.next_step = "end"
         return state
@@ -71,7 +110,7 @@ def resolve_zone_node(state: AgentState) -> AgentState:
     state.disambiguation_options = options
     
     llm = get_llm_client()
-    state.reply = llm.call_make_disambiguation_question("zone", options)
+    state.reply = llm.call_make_disambiguation_question("zone", options, state.language)
     state.next_step = "end"
     
     return state
@@ -79,8 +118,10 @@ def resolve_zone_node(state: AgentState) -> AgentState:
 
 def resolve_car_node(state: AgentState) -> AgentState:
     """Resolve car(s) based on intent."""
-    logger.info(f"[{state.session_id}] resolve_car_node - intent: {state.intent}, identifier: {state.car_identifier}")
+    logger.info(f"[{state.session_id}] resolve_car_node - intent: {state.intent}, identifier: {state.car_identifier}, "
+               f"selected_car: {state.selected_car.plate if state.selected_car else None}")
     
+    llm = get_llm_client()
     cars = list_user_cars(state.session_id)
     
     if state.intent == "fleet":
@@ -92,10 +133,14 @@ def resolve_car_node(state: AgentState) -> AgentState:
     # Single car intent
     if state.car_identifier:
         # Find specific car
+        logger.info(f"[{state.session_id}] Looking for car with identifier: {state.car_identifier}")
         matches = find_car_by_identifier(cars, state.car_identifier)
         
         if not matches:
-            state.reply = f"I couldn't find a car matching '{state.car_identifier}'. Please check the plate number."
+            state.reply = llm.call_translate_message(
+                f"I couldn't find a car matching '{state.car_identifier}'. Please check the plate number.",
+                state.language
+            )
             state.pending_question = False
             state.next_step = "end"
             return state
@@ -121,10 +166,16 @@ def resolve_car_node(state: AgentState) -> AgentState:
         ]
         state.disambiguation_options = options
         
-        llm = get_llm_client()
-        state.reply = llm.call_make_disambiguation_question("car", options)
+        # llm already initialized at the beginning of the function
+        state.reply = llm.call_make_disambiguation_question("car", options, state.language)
         state.next_step = "end"
         
+        return state
+    
+    # No identifier - check if we have a selected car from previous turn
+    if state.selected_car:
+        logger.info(f"[{state.session_id}] No car identifier in message, using previous selected_car: {state.selected_car.plate}")
+        state.next_step = "resolve_zone"
         return state
     
     # No identifier - check if multiple cars
@@ -144,8 +195,8 @@ def resolve_car_node(state: AgentState) -> AgentState:
         ]
         state.disambiguation_options = options
         
-        llm = get_llm_client()
-        state.reply = llm.call_make_disambiguation_question("car", options)
+        # llm already initialized at the beginning of the function
+        state.reply = llm.call_make_disambiguation_question("car", options, state.language)
         state.next_step = "end"
         
         return state
@@ -155,7 +206,10 @@ def resolve_car_node(state: AgentState) -> AgentState:
         state.selected_car = cars[0]
         state.next_step = "resolve_zone"
     else:
-        state.reply = "You don't have any cars registered. Please add a vehicle first."
+        state.reply = llm.call_translate_message(
+            "You don't have any cars registered. Please add a vehicle first.",
+            state.language
+        )
         state.pending_question = False
         state.next_step = "end"
     
@@ -166,15 +220,20 @@ def fetch_policy_node(state: AgentState) -> AgentState:
     """Fetch policy for selected zone."""
     logger.info(f"[{state.session_id}] fetch_policy_node - zone: {state.selected_zone.zone_id if state.selected_zone else 'None'}")
     
+    llm = get_llm_client()
+    
     if not state.selected_zone:
-        state.reply = "Error: No zone selected for policy fetch."
+        state.reply = llm.call_translate_message("Error: No zone selected for policy fetch.", state.language)
         state.next_step = "end"
         return state
     
     policy = get_policy(state.selected_zone.zone_id)
     
     if not policy:
-        state.reply = f"I couldn't find policy information for {state.selected_zone.zone_name}."
+        state.reply = llm.call_translate_message(
+            f"I couldn't find policy information for {state.selected_zone.zone_name}.",
+            state.language
+        )
         state.next_step = "end"
         return state
     
@@ -188,8 +247,10 @@ def decide_node(state: AgentState) -> AgentState:
     """Make eligibility decision(s)."""
     logger.info(f"[{state.session_id}] decide_node - intent: {state.intent}")
     
+    llm = get_llm_client()
+    
     if not state.policy:
-        state.reply = "Error: No policy available for decision."
+        state.reply = llm.call_translate_message("Error: No policy available for decision.", state.language)
         state.next_step = "end"
         return state
     
@@ -212,7 +273,7 @@ def decide_node(state: AgentState) -> AgentState:
     else:
         # Single car decision
         if not state.selected_car:
-            state.reply = "Error: No car selected for decision."
+            state.reply = llm.call_translate_message("Error: No car selected for decision.", state.language)
             state.next_step = "end"
             return state
         
@@ -236,7 +297,8 @@ def explain_node(state: AgentState) -> AgentState:
         car=state.selected_car,
         cars=state.cars,
         policy=state.policy,
-        zone=state.selected_zone
+        zone=state.selected_zone,
+        language=state.language
     )
     
     state.reply = explanation

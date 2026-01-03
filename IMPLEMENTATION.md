@@ -90,7 +90,50 @@ agentic-orchestrator/
 - ✅ CORS enabled
 - ✅ Auto-generated OpenAPI docs
 
-### 8. Testing
+### 8. Frontend (React Chat UI)
+- ✅ Modern, user-friendly chat interface with gradient design
+- ✅ Welcome screen with available test cars and example queries
+- ✅ Interactive disambiguation with clickable buttons
+- ✅ Trace ID display for debugging (🔍 icon per message)
+- ✅ Session ID display in footer
+- ✅ Example queries users can click to send
+- ✅ Loading states and error handling
+- ✅ Responsive design (desktop and mobile)
+- ✅ Vite dev server with backend proxy
+- ✅ Auto-scroll to latest message
+
+### 9. Language Detection (Multilingual Support)
+- ✅ Automatic language detection from user messages
+- ✅ 7 supported languages: English, Spanish, French, Dutch, German, Italian, Portuguese
+- ✅ Responses generated in detected language
+- ✅ Disambiguation questions in user's language
+- ✅ Error messages translated to user's language
+- ✅ Language stored in AgentState.language field
+- ✅ Uses LLM for detection (temperature=0.3) and translation
+- ✅ Language detected fresh for each new message
+
+### 10. Request Traceability
+- ✅ Unique trace ID (UUID v4) for every request
+- ✅ Trace IDs in response JSON and HTTP headers (X-Trace-ID)
+- ✅ Structured logging with trace ID injection
+- ✅ Log format: `timestamp | trace_id | level | module | message`
+- ✅ Context variable for trace ID propagation across async calls
+- ✅ Request/response logging with trace correlation
+- ✅ Complete request visibility from entry to exit
+- ✅ Graph node tracking with session ID and key parameters
+- ✅ Error tracking with full stack traces
+
+### 11. VIN/Car Context Preservation
+- ✅ Car context preserved across conversation turns
+- ✅ Handles follow-up queries without re-specifying car
+- ✅ Example: "Is EF-456-GH allowed in Amsterdam?" → "And for Rotterdam?" (preserves car)
+- ✅ Intent preservation logic: preserves car AND intent together
+- ✅ State restoration preserves `car_identifier` and `selected_car`
+- ✅ Only updates car context when explicitly mentioned in new message
+- ✅ Comprehensive tests for multi-turn conversations
+- ✅ Works through API/frontend layer (not just Python)
+
+### 12. Testing
 - ✅ Unit tests for all workflow nodes
 - ✅ Mocked LLM calls (no API key needed for tests)
 - ✅ Test cases:
@@ -105,7 +148,188 @@ agentic-orchestrator/
 
 ---
 
-## 🏗️ Architecture Highlights
+## 🐛 Bug Fixes and Improvements
+
+### 1. VIN Context Preservation Bug Fix
+**Problem:** Car context was lost between requests when user asked follow-up questions without mentioning the car again.
+
+**Root Cause:** The `extract_intent_node()` function was unconditionally overwriting both `car_identifier` and `intent` with LLM extraction results, even when the user didn't mention a car in the follow-up message.
+
+**Solution Implemented:**
+```python
+# Preserve previous car context
+previous_car_identifier = state.car_identifier
+previous_selected_car = state.selected_car
+
+# Only override if new message explicitly mentions a car
+if intent_data.car_identifier:
+    state.intent = intent_data.intent
+    state.car_identifier = intent_data.car_identifier
+elif previous_car_identifier or previous_selected_car:
+    # Force single_car intent when car context exists
+    state.intent = "single_car"
+    state.car_identifier = previous_car_identifier
+    state.selected_car = previous_selected_car
+else:
+    state.intent = intent_data.intent
+```
+
+**Result:** Users can now ask "Is EF-456-GH allowed in Amsterdam?" followed by "And for Rotterdam?" and the system correctly preserves the car context.
+
+### 2. Graph Recursion Fix
+**Problem:** System hit recursion limit (50 iterations) without reaching END state when querying car eligibility.
+
+**Root Cause:** After changing graph flow from zone→car→policy to car→zone→policy, routing functions weren't respecting the `next_step` field set by nodes, causing infinite loops.
+
+**Solutions Implemented:**
+1. **Fixed `route_after_car()`**: Added check for `next_step == "end"` to respect when resolve_car_node wants to terminate
+2. **Fixed `route_after_zone()`**: Added check for `next_step == "fetch_policy"` to prevent routing back to resolve_car
+3. **Fixed `resolve_car_node`**: Changed next_step assignment to "resolve_zone" instead of "fetch_policy"
+4. **Increased recursion_limit**: Set to 50 as safety measure
+
+**Result:** All queries complete without hitting recursion limits. Correct flow: extract_intent → resolve_car → resolve_zone → fetch_policy → decide → explain → END
+
+---
+
+## � Frontend Implementation Details
+
+### Technology Stack
+- **React 18.2** - UI framework
+- **Vite 5.0** - Build tool and dev server with HMR
+- **Axios 1.6** - HTTP client for API calls
+- **CSS3** - Modern styling with gradients, animations, flexbox
+
+### Key Features
+1. **Welcome Screen**
+   - Shows available test cars with eligibility status
+   - Displays categorized example queries
+   - Clear POC scope explanation
+   - Appears when chat is empty
+
+2. **Interactive Chat**
+   - User messages on right (gradient background)
+   - Assistant messages on left (white background)
+   - Smooth animations and transitions
+   - Auto-scroll to latest message
+   - Timestamps for all messages
+
+3. **Smart Examples**
+   - Three categories: Single Car, Fleet Queries, Policy Information
+   - Click to instantly send query
+   - 8 total pre-built examples
+
+4. **Disambiguation UI**
+   - Detects `pending_question: true` from backend
+   - Displays options as clickable buttons
+   - Sends selection to `/api/chat/answer` endpoint
+   - Continues conversation automatically
+
+5. **Traceability Display**
+   - Shows trace ID for each message (🔍 icon)
+   - Session ID in footer
+   - Monospace formatting for IDs
+
+### Project Structure
+```
+frontend/
+├── src/
+│   ├── App.jsx          # Main chat component (300+ lines)
+│   ├── App.css          # Complete styling (400+ lines)
+│   ├── main.jsx         # React entry point
+│   └── index.css        # Global styles
+├── index.html           # HTML template
+├── package.json         # Dependencies
+├── vite.config.js       # Vite config with backend proxy
+├── start_frontend.sh    # Startup script
+└── README.md            # Frontend docs
+```
+
+### API Integration
+- Vite proxy: `/api` → `http://localhost:8000`
+- Session management via session_id
+- Proper error handling with visual feedback
+- Loading states during processing
+
+---
+
+## 🌍 Language Detection Technical Details
+
+### Implementation
+**File:** `app/llm.py`
+- `call_detect_language(user_message: str) -> str` - Detects language using LLM (temperature=0.3)
+- `call_translate_message(message: str, language: str) -> str` - Translates error messages
+- Updated `call_make_disambiguation_question()` - Added language parameter
+- Updated `call_explain()` - Passes language to LLM for response generation
+
+**File:** `app/models.py`
+- Added `language: str = "en"` field to `AgentState`
+
+**File:** `app/graph.py`
+- `extract_intent_node()` - Detects language at start of each turn
+- All nodes - Translate error messages using detected language
+- `explain_node()` - Passes language to explanation generation
+
+### Supported Languages (ISO 639-1)
+- **en** - English (default)
+- **es** - Spanish
+- **fr** - French
+- **nl** - Dutch
+- **de** - German
+- **it** - Italian
+- **pt** - Portuguese
+
+### How It Works
+1. User sends message in any supported language
+2. System detects language using LLM
+3. Language stored in `AgentState.language`
+4. All responses generated in detected language:
+   - Disambiguation questions
+   - Final explanations
+   - Error messages
+5. Language detected fresh for each new message
+
+---
+
+## 📊 Traceability Technical Details
+
+### Components
+**File:** `app/logging_config.py`
+- Custom log formatter with trace ID injection
+- Context variable (ContextVar) for trace ID propagation
+- Centralized logging configuration
+- Format: `timestamp | trace_id | level | module | message`
+
+**File:** `app/main.py`
+- Middleware generates UUID v4 trace ID for each request
+- Injects trace ID into logging context
+- Adds `X-Trace-ID` to HTTP response headers
+- Request/response logging with trace correlation
+
+**File:** `app/models.py`
+- `trace_id` field in `AgentState` for persistence
+- `trace_id` field in `ChatResponse` for client visibility
+
+**File:** `app/graph.py`
+- Logging at every node entry with session ID
+- Tracks key parameters and decisions
+- Records disambiguation triggers
+- Logs policy fetches and outcomes
+
+### Benefits
+1. **Complete Request Visibility** - Trace every request from entry to exit
+2. **Multi-Step Flow Tracking** - Follow disambiguation across API calls
+3. **Production Debugging** - Search logs by trace ID to see complete flow
+4. **Performance Monitoring** - Track timing for each node
+5. **Session Correlation** - Link multiple requests from same user
+
+### Usage
+- Trace IDs in JSON response: `"trace_id": "74a3bd84-1285-461d-9fd5-b120a79e4876"`
+- Trace IDs in HTTP headers: `X-Trace-ID: 74a3bd84-1285-461d-9fd5-b120a79e4876`
+- Search logs: `grep "74a3bd84-1285-461d" app.log`
+
+---
+
+## �🏗️ Architecture Highlights
 
 ### Deterministic Control Flow
 ```

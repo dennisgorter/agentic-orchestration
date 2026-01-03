@@ -282,6 +282,19 @@
   padding: 2px 6px;
   border-radius: 4px;
   font-size: 0.7rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.trace-id-link {
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.trace-id-link:hover {
+  background: #667eea !important;
+  color: white !important;
+  transform: scale(1.05);
 }
 
 .disambiguation-options {
@@ -454,6 +467,381 @@
 
 .messages::-webkit-scrollbar-thumb:hover {
   background: #764ba2;
+}
+
+/* Modal styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease-in;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 16px;
+  max-width: 700px;
+  max-height: 85vh;
+  width: 90%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(50px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.modal-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 20px 30px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.modal-close {
+  background: transparent;
+  border: none;
+  color: white;
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 5px;
+  line-height: 1;
+  transition: transform 0.2s;
+}
+
+.modal-close:hover {
+  transform: scale(1.2);
+}
+
+.modal-body {
+  padding: 30px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.trace-section {
+  margin-bottom: 25px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.trace-section:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.trace-section h3 {
+  color: #667eea;
+  font-size: 1rem;
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+}
+
+.trace-code {
+  display: block;
+  background: #f8f9fa;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.85rem;
+  color: #333;
+  word-break: break-all;
+  border: 1px solid #e0e0e0;
+}
+
+.trace-field {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+  align-items: flex-start;
+}
+
+.field-label {
+  font-weight: 600;
+  color: #555;
+  min-width: 100px;
+  font-size: 0.9rem;
+}
+
+.field-value {
+  color: #333;
+  flex: 1;
+  font-size: 0.9rem;
+}
+
+.field-value code {
+  background: #f0f0f0;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 0.85rem;
+}
+
+.content-preview {
+  background: #f8f9fa;
+  padding: 12px;
+  border-radius: 6px;
+  border-left: 3px solid #667eea;
+  line-height: 1.6;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.trace-status {
+  display: inline-block;
+  background: #d4edda;
+  color: #155724;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.trace-options-list {
+  list-style: none;
+  padding: 0;
+}
+
+.trace-options-list li {
+  background: #f8f9fa;
+  padding: 10px 15px;
+  margin-bottom: 8px;
+  border-radius: 6px;
+  border-left: 3px solid #667eea;
+  font-size: 0.9rem;
+}
+
+.trace-options-list li strong {
+  color: #667eea;
+  margin-right: 8px;
+}
+
+.json-details {
+  margin-top: 15px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.json-details summary {
+  padding: 12px 15px;
+  background: #f8f9fa;
+  cursor: pointer;
+  font-weight: 600;
+  color: #667eea;
+  user-select: none;
+  transition: background 0.2s;
+}
+
+.json-details summary:hover {
+  background: #e9ecef;
+}
+
+.json-details[open] summary {
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.json-preview {
+  background: #1e1e1e;
+  color: #d4d4d4;
+  padding: 15px;
+  margin: 0;
+  font-family: 'Courier New', Consolas, monospace;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  overflow-x: auto;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.json-preview::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.json-preview::-webkit-scrollbar-track {
+  background: #2d2d2d;
+}
+
+.json-preview::-webkit-scrollbar-thumb {
+  background: #667eea;
+  border-radius: 4px;
+}
+
+.trace-loading {
+  text-align: center;
+  padding: 40px 20px;
+  color: #667eea;
+}
+
+.trace-loading p {
+  margin-top: 20px;
+  font-size: 1rem;
+}
+
+.trace-error {
+  padding: 20px;
+  background: #fee;
+  border: 1px solid #fcc;
+  border-radius: 8px;
+  color: #c33;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.status-badge.success {
+  background: #d4edda;
+  color: #155724;
+}
+
+.status-badge.error {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.trace-error-detail {
+  background: #f8d7da;
+  color: #721c24;
+  padding: 15px;
+  border-radius: 8px;
+  border-left: 3px solid #c33;
+  font-family: monospace;
+  font-size: 0.85rem;
+  overflow-x: auto;
+}
+
+.workflow-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.workflow-step {
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+
+.workflow-step[open] {
+  border-color: #667eea;
+}
+
+.step-summary {
+  padding: 15px 20px;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  cursor: pointer;
+  font-weight: 600;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  user-select: none;
+  transition: background 0.2s;
+}
+
+.step-summary:hover {
+  background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%);
+}
+
+.workflow-step[open] .step-summary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-bottom: 2px solid #667eea;
+}
+
+.step-number {
+  background: white;
+  color: #667eea;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.workflow-step[open] .step-number {
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.step-name {
+  flex: 1;
+  margin: 0 15px;
+  font-size: 1rem;
+}
+
+.step-duration {
+  background: rgba(102, 126, 234, 0.1);
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-family: monospace;
+}
+
+.workflow-step[open] .step-duration {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+}
+
+.step-content {
+  padding: 20px;
+  background: white;
+}
+
+.step-subsection {
+  margin-bottom: 20px;
+}
+
+.step-subsection:last-child {
+  margin-bottom: 0;
+}
+
+.step-subsection h4 {
+  color: #667eea;
+  font-size: 0.9rem;
+  margin-bottom: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.final-reply {
+  background: #f8f9fa;
+  padding: 15px;
+  border-radius: 8px;
+  border-left: 4px solid #667eea;
+  line-height: 1.6;
+  color: #333;
 }
 
 /* Responsive design */

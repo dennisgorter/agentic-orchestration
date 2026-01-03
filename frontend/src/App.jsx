@@ -43,6 +43,8 @@ function App() {
   const [sessionId, setSessionId] = useState(() => `user_${Date.now()}`);
   const [showExamples, setShowExamples] = useState(true);
   const [showWorkflow, setShowWorkflow] = useState(false);
+  const [showTraceModal, setShowTraceModal] = useState(false);
+  const [selectedTrace, setSelectedTrace] = useState(null);
   const messagesEndRef = useRef(null);
 
   const scrollToBottom = () => {
@@ -142,6 +144,24 @@ function App() {
     setShowExamples(true);
   };
 
+  const handleTraceClick = async (traceId, message) => {
+    setSelectedTrace({ traceId, message, loading: true });
+    setShowTraceModal(true);
+    
+    try {
+      const response = await axios.get(`/api/trace/${traceId}`);
+      setSelectedTrace({ traceId, message, traceData: response.data, loading: false });
+    } catch (error) {
+      console.error('Error fetching trace:', error);
+      setSelectedTrace({ traceId, message, error: error.message, loading: false });
+    }
+  };
+
+  const closeTraceModal = () => {
+    setShowTraceModal(false);
+    setSelectedTrace(null);
+  };
+
   return (
     <div className="app">
       <div className="container">
@@ -226,7 +246,11 @@ function App() {
                 </div>
                 {message.trace_id && (
                   <div className="trace-id">
-                    🔍 Trace ID: <code>{message.trace_id}</code>
+                    🔍 Trace ID: <code 
+                      className="trace-id-link" 
+                      onClick={() => handleTraceClick(message.trace_id, message)}
+                      title="Click to view trace details"
+                    >{message.trace_id}</code>
                   </div>
                 )}
                 {message.options && message.options.length > 0 && (
@@ -281,6 +305,130 @@ function App() {
           <p className="session-info">Session ID: <code>{sessionId}</code></p>
         </footer>
       </div>
+
+      {showTraceModal && selectedTrace && (
+        <div className="modal-overlay" onClick={closeTraceModal}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>🔍 Trace Details</h2>
+              <button className="modal-close" onClick={closeTraceModal}>✕</button>
+            </div>
+            <div className="modal-body">
+              {selectedTrace.loading && (
+                <div className="trace-loading">
+                  <div className="loading-dots">
+                    <span>.</span><span>.</span><span>.</span>
+                  </div>
+                  <p>Loading trace details...</p>
+                </div>
+              )}
+
+              {selectedTrace.error && (
+                <div className="trace-error">
+                  <p>❌ Error loading trace: {selectedTrace.error}</p>
+                </div>
+              )}
+
+              {selectedTrace.traceData && (
+                <>
+                  <div className="trace-section">
+                    <h3>Execution Summary</h3>
+                    <div className="trace-field">
+                      <span className="field-label">Trace ID:</span>
+                      <code className="field-value">{selectedTrace.traceData.trace_id}</code>
+                    </div>
+                    <div className="trace-field">
+                      <span className="field-label">Session ID:</span>
+                      <code className="field-value">{selectedTrace.traceData.session_id}</code>
+                    </div>
+                    <div className="trace-field">
+                      <span className="field-label">Status:</span>
+                      <span className={`field-value status-badge ${selectedTrace.traceData.success ? 'success' : 'error'}`}>
+                        {selectedTrace.traceData.success ? '✓ Success' : '✗ Failed'}
+                      </span>
+                    </div>
+                    <div className="trace-field">
+                      <span className="field-label">Duration:</span>
+                      <span className="field-value">{selectedTrace.traceData.total_duration_ms?.toFixed(2) || '—'} ms</span>
+                    </div>
+                    <div className="trace-field">
+                      <span className="field-label">Steps:</span>
+                      <span className="field-value">{selectedTrace.traceData.steps?.length || 0}</span>
+                    </div>
+                  </div>
+
+                  {selectedTrace.traceData.error && (
+                    <div className="trace-section">
+                      <h3>Error</h3>
+                      <pre className="trace-error-detail">{selectedTrace.traceData.error}</pre>
+                    </div>
+                  )}
+
+                  {selectedTrace.traceData.steps && selectedTrace.traceData.steps.length > 0 && (
+                    <div className="trace-section">
+                      <h3>Workflow Execution Steps</h3>
+                      <div className="workflow-steps">
+                        {selectedTrace.traceData.steps.map((step, idx) => (
+                          <details key={idx} className="workflow-step" open={idx === 0}>
+                            <summary className="step-summary">
+                              <span className="step-number">Step {step.step_number}</span>
+                              <span className="step-name">{step.node_name}</span>
+                              <span className="step-duration">{step.duration_ms.toFixed(2)}ms</span>
+                            </summary>
+                            <div className="step-content">
+                              <div className="step-subsection">
+                                <h4>Input State</h4>
+                                <pre className="json-preview">{JSON.stringify(step.input_state, null, 2)}</pre>
+                              </div>
+                              <div className="step-subsection">
+                                <h4>Output State</h4>
+                                <pre className="json-preview">{JSON.stringify(step.output_state, null, 2)}</pre>
+                              </div>
+                            </div>
+                          </details>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {selectedTrace.traceData.final_reply && (
+                    <div className="trace-section">
+                      <h3>Final Reply</h3>
+                      <div className="final-reply">{selectedTrace.traceData.final_reply}</div>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {!selectedTrace.loading && !selectedTrace.traceData && !selectedTrace.error && (
+                <div className="trace-section">
+                  <h3>Basic Message Info</h3>
+                  <div className="trace-field">
+                    <span className="field-label">Trace ID:</span>
+                    <code className="field-value">{selectedTrace.traceId}</code>
+                  </div>
+                  <div className="trace-field">
+                    <span className="field-label">Role:</span>
+                    <span className="field-value">{selectedTrace.message.role}</span>
+                  </div>
+                  <div className="trace-field">
+                    <span className="field-label">Timestamp:</span>
+                    <span className="field-value">{selectedTrace.message.timestamp}</span>
+                  </div>
+                </div>
+              )}
+
+              <div className="trace-section">
+                <h3>Complete Message Data</h3>
+                <details className="json-details">
+                  <summary>View Full Message Object</summary>
+                  <pre className="json-preview">{JSON.stringify(selectedTrace.message, null, 2)}</pre>
+                </details>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

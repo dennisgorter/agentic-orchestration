@@ -1,13 +1,50 @@
 """LangGraph workflow for agent orchestration."""
+import time
 from typing import Literal
 from langgraph.graph import StateGraph, END
 from app.models import AgentState, FleetDecision
 from app.llm import get_llm_client
 from app.tools import list_user_cars, resolve_zone, get_policy, find_car_by_identifier
 from app.rules import decide_eligibility
-from app.logging_config import get_logger
+from app.logging_config import get_logger, get_trace_id
+from app.trace_store import get_trace_store
 
 logger = get_logger(__name__)
+
+
+def _wrap_node(node_func, node_name: str):
+    """Wrap a node function to capture trace information."""
+    def wrapped(state: AgentState) -> AgentState:
+        trace_id = get_trace_id()
+        if not trace_id:
+            # No trace ID, just execute normally
+            return node_func(state)
+        
+        trace_store = get_trace_store()
+        
+        # Capture input state
+        input_state = state.model_dump()
+        
+        # Execute node
+        start_time = time.time()
+        result = node_func(state)
+        duration_ms = (time.time() - start_time) * 1000
+        
+        # Capture output state
+        output_state = result.model_dump()
+        
+        # Add to trace
+        trace_store.add_step(
+            trace_id=trace_id,
+            node_name=node_name,
+            input_state=input_state,
+            output_state=output_state,
+            duration_ms=duration_ms
+        )
+        
+        return result
+    
+    return wrapped
 
 
 # ========== Graph Node Functions ==========
@@ -352,13 +389,13 @@ def build_graph() -> StateGraph:
     # Create graph
     graph = StateGraph(AgentState)
     
-    # Add nodes
-    graph.add_node("extract_intent", extract_intent_node)
-    graph.add_node("resolve_zone", resolve_zone_node)
-    graph.add_node("resolve_car", resolve_car_node)
-    graph.add_node("fetch_policy", fetch_policy_node)
-    graph.add_node("decide", decide_node)
-    graph.add_node("explain", explain_node)
+    # Add nodes (wrapped for tracing)
+    graph.add_node("extract_intent", _wrap_node(extract_intent_node, "extract_intent"))
+    graph.add_node("resolve_zone", _wrap_node(resolve_zone_node, "resolve_zone"))
+    graph.add_node("resolve_car", _wrap_node(resolve_car_node, "resolve_car"))
+    graph.add_node("fetch_policy", _wrap_node(fetch_policy_node, "fetch_policy"))
+    graph.add_node("decide", _wrap_node(decide_node, "decide"))
+    graph.add_node("explain", _wrap_node(explain_node, "explain"))
     
     # Set entry point
     graph.set_entry_point("extract_intent")

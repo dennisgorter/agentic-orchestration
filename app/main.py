@@ -7,6 +7,7 @@ from app.models import ChatRequest, ChatAnswerRequest, ChatResponse, AgentState
 from app.state import get_session_store
 from app.graph import get_graph
 from app.logging_config import setup_logging, set_trace_id, get_trace_id, get_logger
+from app.trace_store import get_trace_store
 
 # Setup logging
 setup_logging()
@@ -61,6 +62,10 @@ async def chat(request: ChatRequest):
     trace_id = get_trace_id()
     logger.info(f"Chat request - session: {request.session_id}, message: {request.message[:50]}...")
     
+    # Create trace
+    trace_store = get_trace_store()
+    trace_store.create_trace(trace_id, request.session_id)
+    
     session_store = get_session_store()
     graph = get_graph()
     
@@ -88,6 +93,9 @@ async def chat(request: ChatRequest):
         # Update session store
         session_store.set(request.session_id, result_state)
         
+        # Complete trace
+        trace_store.complete_trace(trace_id, result_state.reply, success=True)
+        
         logger.info(f"Graph completed - session: {request.session_id}, pending_question: {result_state.pending_question}")
         
         # Build response
@@ -104,7 +112,25 @@ async def chat(request: ChatRequest):
         
     except Exception as e:
         logger.error(f"Error processing request - session: {request.session_id}, error: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Error processing request: {str(e)}")
+        trace_store.complete_trace(trace_id, None, success=False, error=str(e))
+        raise HTTPException(status_code=500, detail=f"Error processing message: {str(e)}")
+
+
+@app.get("/trace/{trace_id}")
+async def get_trace(trace_id: str):
+    """
+    Get detailed trace information for a specific trace_id.
+    Shows the workflow execution steps and state transitions.
+    """
+    logger.info(f"Trace request - trace_id: {trace_id}")
+    
+    trace_store = get_trace_store()
+    trace = trace_store.get_trace(trace_id)
+    
+    if not trace:
+        raise HTTPException(status_code=404, detail=f"Trace not found: {trace_id}")
+    
+    return trace
 
 
 @app.post("/chat/answer", response_model=ChatResponse)
@@ -116,6 +142,10 @@ async def chat_answer(request: ChatAnswerRequest):
     """
     trace_id = get_trace_id()
     logger.info(f"Disambiguation answer - session: {request.session_id}, selection: {request.selection_index}")
+    
+    # Create trace for disambiguation answer
+    trace_store = get_trace_store()
+    trace_store.create_trace(trace_id, request.session_id)
     
     session_store = get_session_store()
     graph = get_graph()
@@ -256,6 +286,9 @@ async def chat_answer(request: ChatAnswerRequest):
         # Update session store
         session_store.set(request.session_id, result_state)
         
+        # Complete trace
+        trace_store.complete_trace(trace_id, result_state.reply, success=True)
+        
         logger.info(f"Disambiguation resolved - session: {request.session_id}, final reply length: {len(result_state.reply)}")
         
         # Build response
@@ -272,6 +305,7 @@ async def chat_answer(request: ChatAnswerRequest):
         
     except Exception as e:
         logger.error(f"Error processing disambiguation answer - session: {request.session_id}, error: {str(e)}", exc_info=True)
+        trace_store.complete_trace(trace_id, None, success=False, error=str(e))
         raise HTTPException(status_code=500, detail=f"Error processing answer: {str(e)}")
 
 

@@ -218,19 +218,20 @@ async def chat_answer(request: ChatAnswerRequest):
     
     try:
         # Continue from the appropriate node
-        # We need to manually invoke the next steps since we're resuming mid-flow
+        # We manually invoke nodes and capture traces
         logger.info(f"Continuing from: {state.next_step} for session: {request.session_id}")
         
         if state.next_step == "resolve_zone":
-            from app.graph import resolve_zone_node, fetch_policy_node, decide_node, explain_node
+            from app.graph import _wrap_node, resolve_zone_node, fetch_policy_node, decide_node, explain_node
             
-            state_result = resolve_zone_node(AgentState(**state_dict))
+            state_result = _wrap_node(resolve_zone_node, "resolve_zone")(AgentState(**state_dict))
             state_dict = state_result.model_dump()
             
             # If zone disambiguation is needed, stop here
             if state_result.pending_question:
                 logger.info(f"Additional disambiguation needed for session: {request.session_id}")
                 session_store.set(request.session_id, state_result)
+                trace_store.complete_trace(trace_id, state_result.reply, success=True)
                 return ChatResponse(
                     session_id=request.session_id,
                     reply=state_result.reply,
@@ -242,41 +243,41 @@ async def chat_answer(request: ChatAnswerRequest):
             
             # Continue to fetch_policy
             if state_result.next_step == "fetch_policy":
-                state_result = fetch_policy_node(AgentState(**state_dict))
+                state_result = _wrap_node(fetch_policy_node, "fetch_policy")(AgentState(**state_dict))
                 state_dict = state_result.model_dump()
             
             if state_result.next_step == "decide":
-                state_result = decide_node(AgentState(**state_dict))
+                state_result = _wrap_node(decide_node, "decide")(AgentState(**state_dict))
                 state_dict = state_result.model_dump()
             
             if state_result.next_step == "explain":
-                state_result = explain_node(AgentState(**state_dict))
+                state_result = _wrap_node(explain_node, "explain")(AgentState(**state_dict))
                 state_dict = state_result.model_dump()
             
             result_state = state_result
         elif state.next_step == "fetch_policy":
-            from app.graph import fetch_policy_node, decide_node, explain_node
+            from app.graph import _wrap_node, fetch_policy_node, decide_node, explain_node
             
-            state_result = fetch_policy_node(AgentState(**state_dict))
+            state_result = _wrap_node(fetch_policy_node, "fetch_policy")(AgentState(**state_dict))
             state_dict = state_result.model_dump()
             
             if state_result.next_step == "decide":
-                state_result = decide_node(AgentState(**state_dict))
+                state_result = _wrap_node(decide_node, "decide")(AgentState(**state_dict))
                 state_dict = state_result.model_dump()
             
             if state_result.next_step == "explain":
-                state_result = explain_node(AgentState(**state_dict))
+                state_result = _wrap_node(explain_node, "explain")(AgentState(**state_dict))
                 state_dict = state_result.model_dump()
             
             result_state = state_result
         elif state.next_step == "decide":
-            from app.graph import decide_node, explain_node
+            from app.graph import _wrap_node, decide_node, explain_node
             
-            state_result = decide_node(AgentState(**state_dict))
+            state_result = _wrap_node(decide_node, "decide")(AgentState(**state_dict))
             state_dict = state_result.model_dump()
             
             if state_result.next_step == "explain":
-                state_result = explain_node(AgentState(**state_dict))
+                state_result = _wrap_node(explain_node, "explain")(AgentState(**state_dict))
                 state_dict = state_result.model_dump()
             
             result_state = state_result

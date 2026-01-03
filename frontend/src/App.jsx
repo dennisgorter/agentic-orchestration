@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
 import './App.css';
+import WorkflowDiagram from './WorkflowDiagram';
 
 const EXAMPLE_QUERIES = [
   {
@@ -41,6 +42,7 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [sessionId] = useState(() => `user_${Date.now()}`);
   const [showExamples, setShowExamples] = useState(true);
+  const [showWorkflow, setShowWorkflow] = useState(false);
   const messagesEndRef = useRef(null);
 
   const scrollToBottom = () => {
@@ -139,7 +141,19 @@ function App() {
         <header className="header">
           <h1>🚗 Agent Orchestrator</h1>
           <p className="subtitle">Car Pollution Zone Eligibility - POC</p>
+          <button 
+            className="workflow-toggle"
+            onClick={() => setShowWorkflow(!showWorkflow)}
+          >
+            {showWorkflow ? '💬 Hide Workflow' : '🔄 Show Workflow'}
+          </button>
         </header>
+
+        {showWorkflow && (
+          <div className="workflow-diagram-wrapper">
+            <WorkflowDiagram />
+          </div>
+        )}
 
         {showExamples && messages.length === 0 && (
           <div className="welcome-section">

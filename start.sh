@@ -33,6 +33,12 @@ if [ ! -f ".env" ]; then
     read -p "Press Enter after you've added your API key..."
 fi
 
+# Load environment variables from .env
+if [ -f ".env" ]; then
+    echo "🔑 Loading environment variables from .env..."
+    export $(grep -v '^#' .env | xargs)
+fi
+
 # Start the server
 echo ""
 echo "🌐 Starting FastAPI server..."

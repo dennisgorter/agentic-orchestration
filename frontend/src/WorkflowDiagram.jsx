@@ -10,42 +10,42 @@ const WorkflowDiagram = () => {
       label: 'Extract Intent',
       description: 'LLM analyzes message to extract intent (single_car, fleet, policy_only) and slots (car_identifier, city, zone_phrase)',
       type: 'llm',
-      position: { x: 50, y: 0 }
+      position: { x: 50, y: 20 }
     },
     {
       id: 'resolve_car',
       label: 'Resolve Car',
       description: 'Matches car identifier to user\'s cars. Handles fleet or single car queries',
       type: 'logic',
-      position: { x: 0, y: 100 }
+      position: { x: 20, y: 110 }
     },
     {
       id: 'resolve_zone',
       label: 'Resolve Zone',
       description: 'Resolves city and zone phrase to specific pollution zones',
       type: 'service',
-      position: { x: 100, y: 100 }
+      position: { x: 80, y: 110 }
     },
     {
       id: 'fetch_policy',
       label: 'Fetch Policy',
       description: 'Retrieves pollution policy rules for the resolved zone',
       type: 'service',
-      position: { x: 50, y: 200 }
+      position: { x: 50, y: 210 }
     },
     {
       id: 'decide_eligibility',
       label: 'Decide Eligibility',
       description: 'Applies policy rules to car(s) to determine access eligibility',
       type: 'logic',
-      position: { x: 50, y: 300 }
+      position: { x: 50, y: 310 }
     },
     {
       id: 'format_reply',
       label: 'Format Reply',
       description: 'LLM generates natural language response based on decision',
       type: 'llm',
-      position: { x: 50, y: 400 }
+      position: { x: 50, y: 410 }
     }
   ];
 
@@ -102,14 +102,14 @@ const WorkflowDiagram = () => {
               </div>
             ))}
             
-            <svg className="flow-connections" viewBox="0 0 400 500">
+            <svg className="flow-connections" viewBox="0 0 100 500" preserveAspectRatio="none">
               {edges.map((edge, idx) => {
                 const fromNode = nodes.find(n => n.id === edge.from);
                 const toNode = nodes.find(n => n.id === edge.to);
-                const x1 = (fromNode.position.x / 100) * 400 + 80;
-                const y1 = fromNode.position.y + 40;
-                const x2 = (toNode.position.x / 100) * 400 + 80;
-                const y2 = toNode.position.y + 10;
+                const x1 = fromNode.position.x;
+                const y1 = fromNode.position.y + 50;
+                const x2 = toNode.position.x;
+                const y2 = toNode.position.y;
                 
                 return (
                   <g key={idx}>
@@ -119,15 +119,15 @@ const WorkflowDiagram = () => {
                       x2={x2}
                       y2={y2}
                       stroke="#4a90e2"
-                      strokeWidth="2"
+                      strokeWidth="0.5"
                       markerEnd="url(#arrowhead)"
                     />
                     {edge.condition && (
                       <text
                         x={(x1 + x2) / 2}
-                        y={(y1 + y2) / 2}
+                        y={(y1 + y2) / 2 - 2}
                         fill="#666"
-                        fontSize="10"
+                        fontSize="3"
                         textAnchor="middle"
                       >
                         {edge.condition}
@@ -144,6 +144,7 @@ const WorkflowDiagram = () => {
                   refX="9"
                   refY="3"
                   orient="auto"
+                  markerUnits="strokeWidth"
                 >
                   <polygon points="0 0, 10 3, 0 6" fill="#4a90e2" />
                 </marker>

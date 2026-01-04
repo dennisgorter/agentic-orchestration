@@ -40,12 +40,15 @@ function App() {
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [sessionId, setSessionId] = useState(() => `user_${Date.now()}`);
+  const [sessionId] = useState(() => `user_${Date.now()}`); // Keep for display/reference only
   const [showExamples, setShowExamples] = useState(true);
   const [showWorkflow, setShowWorkflow] = useState(false);
   const [showTraceModal, setShowTraceModal] = useState(false);
   const [selectedTrace, setSelectedTrace] = useState(null);
   const messagesEndRef = useRef(null);
+  
+  // V2 API uses stateless design - client manages conversation history
+  const API_VERSION = "v2";  // Switch between v1 and v2
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -64,15 +67,22 @@ function App() {
       timestamp: new Date().toLocaleTimeString()
     };
 
-    setMessages(prev => [...prev, userMessage]);
+    const newMessages = [...messages, userMessage];
+    setMessages(newMessages);
     setInputValue('');
     setIsLoading(true);
     setShowExamples(false);
 
     try {
-      const response = await axios.post('/api/chat', {
-        session_id: sessionId,
-        message: messageText
+      // Build conversation history for v2 API (stateless)
+      const conversationHistory = newMessages.slice(-10).map(msg => ({
+        role: msg.role === 'user' ? 'user' : 'assistant',
+        content: msg.content
+      }));
+      
+      const response = await axios.post(`/api/${API_VERSION}/chat`, {
+        message: messageText,
+        conversation_history: conversationHistory
       });
 
       const assistantMessage = {
@@ -84,41 +94,15 @@ function App() {
         options: response.data.options
       };
 
-      setMessages(prev => [...prev, assistantMessage]);
+      setMessages([...newMessages, assistantMessage]);
     } catch (error) {
       const errorMessage = {
         role: 'error',
         content: `Error: ${error.response?.data?.detail || error.message}`,
         timestamp: new Date().toLocaleTimeString()
-      };
-      setMessages(prev => [...prev, errorMessage]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleDisambiguationChoice = async (optionIndex) => {
-    setIsLoading(true);
-
-    try {
-      const response = await axios.post('/api/chat/answer', {
-        session_id: sessionId,
-        selection_index: optionIndex
-      });
-
-      const assistantMessage = {
-        role: 'assistant',
-        content: response.data.reply,
-        timestamp: new Date().toLocaleTimeString(),
-        trace_id: response.data.trace_id,
-        pending_question: response.data.pending_question,
-        options: response.data.options
-      };
-
-      setMessages(prev => [...prev, assistantMessage]);
-    } catch (error) {
-      const errorMessage = {
-        role: 'error',
+      };Label) => {
+    // In v2 (stateless), we just send the selection as a new message
+    await sendMessage(optionLabel);   role: 'error',
         content: `Error: ${error.response?.data?.detail || error.message}`,
         timestamp: new Date().toLocaleTimeString()
       };
@@ -158,7 +142,6 @@ function App() {
   };
 
   const closeTraceModal = () => {
-    setShowTraceModal(false);
     setSelectedTrace(null);
   };
 
@@ -283,10 +266,10 @@ function App() {
               </div>
             )}
             <div ref={messagesEndRef} />
-          </div>
-
-          <form onSubmit={handleSubmit} className="input-form">
-            <input
+          </div>, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => handleDisambiguationChoice(option.label
               type="text"
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}

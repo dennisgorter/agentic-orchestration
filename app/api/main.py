@@ -165,21 +165,33 @@ async def chat_v2(request: ChatRequestV2):
     
     try:
         # Route via intent agent (multi-domain ready)
-        answer = await intent_agent.route(
-            request_payload={
+        response_message = await intent_agent.handle(AgentMessage(
+            trace_id=trace_id,
+            correlation_id=correlation_id,
+            sender="api_v2",
+            receiver="intent_agent",
+            payload={
                 "message": request.message,
                 "conversation_history": request.conversation_history or []
             },
-            trace_id=trace_id,
-            correlation_id=correlation_id
-        )
+            conversation_history=request.conversation_history or [],
+            context={},
+            timestamp=datetime.now()
+        ))
         
         logger.info(f"[{trace_id}] V2 Response generated")
+        
+        # Extract fields from response
+        answer = response_message.payload.get("answer", "No response")
+        pending_question = response_message.payload.get("pending_question")
+        options = response_message.payload.get("options")
         
         return ChatResponse(
             reply=answer,
             trace_id=trace_id,
-            correlation_id=correlation_id
+            correlation_id=correlation_id,
+            pending_question=pending_question,
+            options=options
         )
         
     except Exception as e:

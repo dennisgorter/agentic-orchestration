@@ -48,6 +48,8 @@ class ChatResponse(BaseModel):
     reply: str = Field(..., description="Assistant response")
     trace_id: str = Field(..., description="Unique request ID for debugging")
     correlation_id: str = Field(..., description="Links related requests")
+    pending_question: Optional[bool] = Field(None, description="Whether disambiguation is needed")
+    options: Optional[List[Dict]] = Field(None, description="Disambiguation options")
     
     # Future fields:
     # suggested_actions: Optional[List[str]] = Field(None, description="Follow-up actions")

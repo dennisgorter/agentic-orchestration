@@ -98,6 +98,12 @@ class PollutionAgent(BaseAgent):
             if "decision" in result:
                 response_payload["decision"] = result["decision"]
             
+            # Include disambiguation fields if available
+            if "pending_question" in result:
+                response_payload["pending_question"] = result["pending_question"]
+            if "disambiguation_options" in result:
+                response_payload["options"] = result["disambiguation_options"]
+            
             # Return response message using helper
             return message.create_reply(
                 payload=response_payload,

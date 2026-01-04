@@ -41,11 +41,13 @@ fi
 
 # Start the server
 echo ""
-echo "🌐 Starting FastAPI server..."
+echo "🌐 Starting FastAPI server (v2.0.0 - Multi-Agent Architecture)..."
 echo "   API: http://localhost:8000"
 echo "   Docs: http://localhost:8000/docs"
+echo "   V1 (backward compatible): http://localhost:8000/v1/chat"
+echo "   V2 (multi-agent router): http://localhost:8000/v2/chat"
 echo ""
 echo "Press Ctrl+C to stop the server"
 echo ""
 
-uvicorn app.main:app --reload > backend.log 2>&1
+uvicorn app.api.main:app --reload > backend.log 2>&1

@@ -37,7 +37,13 @@ const AVAILABLE_CARS = [
 ];
 
 function App() {
-  const [messages, setMessages] = useState([]);
+  const [messages, setMessages] = useState([
+    {
+      role: 'assistant',
+      content: 'Hello! I can help you check if your car is allowed to enter pollution zones in Amsterdam and Rotterdam. Just ask me about a specific license plate!',
+      timestamp: new Date().toLocaleTimeString()
+    }
+  ]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [sessionId] = useState(() => `user_${Date.now()}`); // Keep for display/reference only
@@ -174,7 +180,7 @@ function App() {
           </div>
         )}
 
-        {showExamples && messages.length === 0 && (
+        {showExamples && messages.length === 1 && (
           <div className="welcome-section">
             <div className="info-card">
               <h2>Welcome! 👋</h2>

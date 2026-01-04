@@ -75,7 +75,7 @@ class IntentAgent(BaseAgent):
         request_payload: dict,
         trace_id: str,
         correlation_id: Optional[str] = None
-    ) -> str:
+    ) -> AgentMessage:
         """
         Route request to appropriate domain agent.
         
@@ -93,7 +93,7 @@ class IntentAgent(BaseAgent):
             correlation_id: Optional correlation ID (defaults to trace_id)
             
         Returns:
-            Response string from domain agent
+            AgentMessage from domain agent with full response data
             
         Raises:
             ValueError: If no agent can handle the request
@@ -110,9 +110,20 @@ class IntentAgent(BaseAgent):
         agent = self.agents.get(intent)
         if not agent:
             available = ", ".join(self.agents.keys()) if self.agents else "none"
-            return (
+            error_msg = (
                 f"Sorry, I don't know how to help with that yet. "
                 f"I can help with: {available}"
+            )
+            # Return error as AgentMessage
+            return AgentMessage(
+                trace_id=trace_id,
+                correlation_id=correlation_id or trace_id,
+                sender=self.name,
+                receiver="unknown",
+                payload={"answer": error_msg},
+                conversation_history=request_payload.get("conversation_history", []),
+                context={},
+                timestamp=datetime.now()
             )
         
         # 3. Create agent message
@@ -131,8 +142,8 @@ class IntentAgent(BaseAgent):
         print(f"[{trace_id}] IntentAgent routing to: {intent}")
         response = await agent.handle(message)
         
-        # 5. Return answer
-        return response.payload.get("answer", "No response from agent.")
+        # 5. Return full response (preserves disambiguation data)
+        return response
     
     async def handle(self, message: AgentMessage) -> AgentMessage:
         """
@@ -142,17 +153,16 @@ class IntentAgent(BaseAgent):
             message: Incoming agent message
             
         Returns:
-            AgentMessage with routing result
+            AgentMessage with routing result (full response from domain agent)
         """
-        answer = await self.route(
+        response = await self.route(
             request_payload=message.payload,
             trace_id=message.trace_id,
             correlation_id=message.correlation_id
         )
         
-        return message.create_reply(
-            payload={"answer": answer}
-        )
+        # Return the full response from domain agent (preserves all fields)
+        return response
     
     def _classify_intent(self, message: str) -> str:
         """

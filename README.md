@@ -1,6 +1,12 @@
 # Agent Orchestrator - Car Pollution Zone Eligibility Service
 
+**Version:** 1.0.0 (Production-Ready Single-Agent)  
+**Next Release:** 2.0.0 (Two-Agent Architecture) - [See PHASE1_REFACTOR_PLAN.md](PHASE1_REFACTOR_PLAN.md)
+
 A proof-of-concept FastAPI service with React frontend that uses LangGraph to orchestrate car eligibility checks for city pollution zones. The service intelligently routes user queries through a deterministic workflow, using OpenAI for natural language understanding while keeping business logic rule-based.
+
+**Current Architecture:** Single-domain monolithic agent (⭐⭐⭐⭐)  
+**Planned Evolution:** Two-agent architecture (Intent Router + Pollution Expert) for multi-domain readiness
 
 ## 🚀 Quick Start
 
@@ -43,6 +49,9 @@ cd frontend && npx vite
   - Architecture patterns and design decisions
   - Extension points for production deployment
 - **[TRACEABILITY.md](TRACEABILITY.md)** - Guide to request tracing and debugging
+- **[ARCHITECTURE_ASSESSMENT.md](ARCHITECTURE_ASSESSMENT.md)** - Architecture review and evolution strategy
+- **[PHASE1_REFACTOR_PLAN.md](PHASE1_REFACTOR_PLAN.md)** - Two-agent refactor implementation guide
+- **[MIGRATION_CHECKLIST.md](MIGRATION_CHECKLIST.md)** - Week-by-week migration tasks
 
 ## User Interface
 

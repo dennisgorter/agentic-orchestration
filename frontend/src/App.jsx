@@ -239,10 +239,10 @@ function App() {
                 {message.options && message.options.length > 0 && (
                   <div className="disambiguation-options">
                     <p className="options-prompt">Please select an option:</p>
-                    {message.options.map((option) => (
+                    {message.options.map((option, idx) => (
                       <button
-                        key={option.index}
-                        onClick={() => handleDisambiguationChoice(option.index)}
+                        key={idx}
+                        onClick={() => handleDisambiguationChoice(option.label)}
                         className="option-button"
                         disabled={isLoading}
                       >
@@ -266,10 +266,10 @@ function App() {
               </div>
             )}
             <div ref={messagesEndRef} />
-          </div>, idx) => (
-                      <button
-                        key={idx}
-                        onClick={() => handleDisambiguationChoice(option.label
+          </div>
+
+          <form onSubmit={handleSubmit} className="input-form">
+            <input
               type="text"
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}

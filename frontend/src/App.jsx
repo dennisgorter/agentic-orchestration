@@ -100,16 +100,16 @@ function App() {
         role: 'error',
         content: `Error: ${error.response?.data?.detail || error.message}`,
         timestamp: new Date().toLocaleTimeString()
-      };Label) => {
-    // In v2 (stateless), we just send the selection as a new message
-    await sendMessage(optionLabel);   role: 'error',
-        content: `Error: ${error.response?.data?.detail || error.message}`,
-        timestamp: new Date().toLocaleTimeString()
       };
-      setMessages(prev => [...prev, errorMessage]);
+      setMessages([...newMessages, errorMessage]);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleDisambiguationChoice = async (optionLabel) => {
+    // In v2 (stateless), we just send the selection as a new message
+    await sendMessage(optionLabel);
   };
 
   const handleSubmit = (e) => {
